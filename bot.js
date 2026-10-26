@@ -2,68 +2,50 @@ const mineflayer = require('mineflayer');
 
 function createBot() {
     const bot = mineflayer.createBot({
-        host: 'OposicionesPolicia.aternos.me', // <--- REEMPLAZA ESTO POR LA IP DE TU SERVER
-        port: 32679,                // Puerto predeterminado de Minecraft
-        username: 'BOT24H',    // Nombre genérico del bot/NPC dentro del juego
-        version: false              // Autodetecta la versión exacta del servidor (1.8 a 1.21+)
+        host: 'OposicionesPolicia.aternos.me',
+        port: 32679,
+        username: 'BOT24H',
+        version: '1.20.4' // Configurado para versiones 1.20.x/26.3
     });
 
     bot.on('spawn', () => {
-        console.log(`[NPC] El bot ha aparecido correctamente en el mapa.`);
-        // Si tu servidor No-Premium requiere contraseña, descomenta la línea de abajo:
-        // setTimeout(() => bot.chat('/login erickJKN'), 4000);
+        console.log('[NPC] El bot ha aparecido correctamente en el mapa.');
+        
+        // Si tu servidor requiere contraseña al entrar, quita las // de la línea de abajo:
+        // setTimeout(() => bot.chat('/login TuContraseña'), 3000);
     });
 
     bot.on('login', () => {
-        console.log(`[NPC] Conexión establecida con el servidor de Minecraft.`);
+        console.log('[NPC] Conexión establecida con el servidor.');
     });
 
-    // Rutina automatizada del NPC: Buscar cofre, interactuar, cerrar y saltar (Cada 45 segundos)
-    setInterval(async () => {
+    // Rutina Anti-AFK segura (salto suave y movimiento de cámara cada 30 segundos)
+    setInterval(() => {
         if (!bot || !bot.entity) return;
 
         try {
-            // 1. Localizar el bloque de cofre en un radio de 5 bloques
-            const chestBlock = bot.findBlock({
-                matching: bot.registry.blocksByName.chest.id,
-                maxDistance: 5
-            });
-
-            if (chestBlock) {
-                console.log('[NPC] Interactuando con el contenedor cercano...');
-                
-                // 2. Abrir el contenedor (genera la animación y sonido físico en el servidor)
-                const chest = await bot.openChest(chestBlock);
-                console.log('[NPC] Contenedor abierto.');
-                
-                // Mantener la interfaz abierta durante 2 segundos simulando actividad de inventario
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                // 3. Cerrar la interfaz del contenedor
-                chest.close();
-                console.log('[NPC] Contenedor cerrado.');
-            } else {
-                console.log('[NPC] Aviso: No se detectó ningún contenedor válido cerca.');
-            }
-
-            // 4. Ejecutar acción de salto físico para evitar la inactividad (Anti-AFK)
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Salto controlado
             bot.setControlState('jump', true);
-            setTimeout(() => bot.setControlState('jump', false), 500);
-            console.log('[NPC] Acción anti-inactividad completada con éxito.');
+            setTimeout(() => bot.setControlState('jump', false), 400);
 
+            // Giro de cámara ligero para demostrar actividad al servidor
+            const yaw = bot.entity.yaw + 0.5;
+            const pitch = bot.entity.pitch;
+            bot.look(yaw, pitch, true);
+
+            console.log('[NPC] Acción anti-AFK ejecutada.');
         } catch (err) {
-            console.log(`[NPC] Error en el ciclo de ejecución: ${err.message}`);
+            console.log(`[NPC] Error en rutina anti-AFK: ${err.message}`);
         }
-    }, 45000);
+    }, 30000);
 
-    // Sistema de auto-reconexión segura tras expulsiones o reinicios del servidor
+    // Reintentar conexión automáticamente si el servidor lo expulsa o se reinicia
     bot.on('end', (reason) => {
-        console.log(`[NPC] Conexión finalizada por: ${reason}. Reintentando en 25 segundos...`);
-        setTimeout(createBot, 25000);
+        console.log(`[NPC] Desconectado por: ${reason}. Reintentando en 15 segundos...`);
+        setTimeout(createBot, 15000);
     });
 
-    bot.on('error', (err) => console.log(`[NPC] Error crítico de red detectado: ${err}`));
+    bot.on('error', (err) => console.log(`[NPC] Error de red: ${err.message}`));
 }
 
 createBot();
